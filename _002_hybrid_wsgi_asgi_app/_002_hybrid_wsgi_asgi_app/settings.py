@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,8 +30,12 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
+SERVER = os.environ["SERVER"]
+
+
 
 INSTALLED_APPS = [
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,6 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+if SERVER == "WSGI":
+    INSTALLED_APPS.append('wsgiwebapp')
+elif SERVER == "ASGI":
+    INSTALLED_APPS.insert(0, 'daphne')
+    INSTALLED_APPS.append('asgiwebapp')
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -121,3 +132,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ASGI_APPLICATION = "_002_hybrid_wsgi_asgi_app.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

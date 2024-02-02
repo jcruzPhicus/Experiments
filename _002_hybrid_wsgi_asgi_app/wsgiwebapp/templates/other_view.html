@@ -1,0 +1,31 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    Esto es otra vista distinta desde la cual mandamos el mensaje.
+    <br>
+    <a href="/">Indice</a>
+    <br>
+    <script>
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/message/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            alert(data.message)
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Socket closed unexpectedly');
+        };
+
+    </script>
+</body>
+</html>

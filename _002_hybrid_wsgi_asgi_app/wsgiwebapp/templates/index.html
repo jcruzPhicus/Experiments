@@ -1,0 +1,46 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <a href="/other_view">Vista 2</a>
+    <br>
+    <input id="textinput" type="text" size="100"><br>
+    <input id="submit" type="button" value="Send">
+    <script>
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/message/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            alert(data.message)
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Socket closed unexpectedly');
+        };
+
+        document.querySelector('#textinput').focus();
+        document.querySelector('#textinput').onkeyup = function(e) {
+            if (e.key === 'Enter') {  // enter, return
+                document.querySelector('#submit').click();
+            }
+        };
+
+        document.querySelector('#submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#textinput');
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.value = '';
+        };
+    </script>
+</body>
+</html>
