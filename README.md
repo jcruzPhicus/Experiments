@@ -4,8 +4,7 @@ Este repo contiene experimentos de código para teorizar como implementar cierta
 
 # Instalación y ejecución
 ```
-sudo apt install python3-dev
-sudo apt install libmysqlclient-dev
+sudo apt install python3-dev libmysqlclient-dev nginx
 pipenv --python /usr/bin/python3
 pipenv install
 pipenv shell
