@@ -16,3 +16,4 @@ cd _proyecto_que_quieras_probar
 # Explicación de cada experimento
 - 001_full_asgi_app (02/02/2024): Implementación de websockets con django_channels en una app totalmente ASGI
 - 002_hybrid_wsgi_asgi_app (02/02/2024): Implementación de websockets con django_channels en una app hibrida de WSGI y ASGI.
+

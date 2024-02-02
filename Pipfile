@@ -5,8 +5,8 @@ name = "pypi"
 
 [packages]
 django = "*"
-django-channels = "*"
 daphne = "*"
+channels = "*"
 
 [dev-packages]
 
