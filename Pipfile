@@ -8,6 +8,8 @@ django = "*"
 daphne = "*"
 channels = "*"
 uwsgi = "*"
+uvicorn = "*"
+gunicorn = "*"
 
 [dev-packages]
 
