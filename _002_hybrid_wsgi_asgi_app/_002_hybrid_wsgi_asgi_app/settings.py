@@ -30,7 +30,7 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-SERVER = os.environ["SERVER"]
+SERVER = os.getenv("SERVER")
 
 
 

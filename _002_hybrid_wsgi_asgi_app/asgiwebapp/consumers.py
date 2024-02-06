@@ -1,28 +1,47 @@
 import json
 import random
+import time
 
-from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.auth import login
+from channels.generic.websocket import WebsocketConsumer
+from django.contrib.auth.models import Permission
 import asyncio
-from asgiref.sync import async_to_sync
-class MessageConsumer(AsyncWebsocketConsumer):
+from asgiref.sync import sync_to_async, async_to_sync
+
+def get_user_permissions(user):
+    if user.is_superuser:
+        return list(Permission.objects.all())
+    return list(user.user_permissions.all()) | list(Permission.objects.filter(group__user=user))
+
+class MessageConsumer(WebsocketConsumer):
     group_name = "grupoTest"
-    async def connect(self):
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
+    user = None
 
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    async def receive(self, text_data):
+    def connect(self):
+        self.user = self.scope["user"]
+        if not self.user.is_authenticated:
+            self.accept() # realmente esto debería de hacerlo el frontend, si falla la conexion enseñar error, en vez de aceptar y cerrar
+            self.send(text_data=json.dumps({"message": f"You are not logged in, go to /login and try again."}))
+            self.close()
+        else: 
+            permissions = get_user_permissions(self.user)
+            self.accept()
+            self.send(text_data=json.dumps({"message": f"You are logged in as {self.user} with permissions {permissions}"}))
+            async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
+            
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
+
+    def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
         print(message)
-        await self.channel_layer.group_send(self.group_name, {"type": "alert.message", "message": message})
+        async_to_sync(self.channel_layer.group_send)(self.group_name, {"type": "alert.message", "message": message})
     
-    async def alert_message(self, event):
+    def alert_message(self, event):
         message = event["message"]
         print("Called alert_message")
-        await asyncio.sleep(2)
-        await self.send(text_data=json.dumps({"message": f"You sent {message}!"}))
+        time.sleep(2)
+        self.send(text_data=json.dumps({"message": f"You sent {message}!"}))
        
