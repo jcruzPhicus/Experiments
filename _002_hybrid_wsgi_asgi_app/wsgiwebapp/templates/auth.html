@@ -1,0 +1,47 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    Vista de auth
+    <br>
+    <a href="/">Indice</a>
+    <br>
+    <input id="permissions" type="button" value="permissions">
+    <input id="user" type="button" value="user">
+    <script>
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/auth/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            alert(data.message)
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Socket closed unexpectedly');
+        };
+
+
+
+        document.querySelector('#permissions').onclick = function(e) {
+            chatSocket.send(JSON.stringify({
+                'type': "permission"
+            }));
+        };
+        
+        document.querySelector('#user').onclick = function(e) {
+            chatSocket.send(JSON.stringify({
+                'type': "username"
+            }));
+        };
+        
+    </script>
+</body>
+</html>

@@ -26,6 +26,7 @@ class MessageConsumer(WebsocketConsumer):
         else: 
             permissions = get_user_permissions(self.user)
             self.accept()
+            self.group_name = self.user.username
             self.send(text_data=json.dumps({"message": f"You are logged in as {self.user} with permissions {permissions}"}))
             async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
             
@@ -60,3 +61,38 @@ class HeartbeatConsumer(AsyncWebsocketConsumer):
         await asyncio.sleep(5)
         await self.send(text_data=json.dumps({"message": f"Heartbeat at {time.strftime('%m/%d/%Y, %H:%M:%S', time.localtime())}"}))
         await asyncio.get_event_loop().create_task(self.send_heartbeat())
+
+
+class AuthConsumer(WebsocketConsumer):
+    user = None
+    
+    def connect(self):
+        self.user = self.scope["user"]
+        if not self.user.is_authenticated:
+            self.close()
+        else: 
+            
+            self.accept()
+            self.group_name = self.user.username
+            async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
+            
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
+
+    def receive(self, text_data):
+        msg = json.loads(text_data)
+        msg_type = msg["type"]
+        async_to_sync(self.channel_layer.group_send)(self.group_name, {"type": msg_type})
+
+
+
+    def permission(self, event):
+        permissions = get_user_permissions(self.user)
+        permission_list = []
+        for p in permissions:
+            permission_list.append(p.name)
+        self.send(text_data=json.dumps({"message": permission_list}))
+
+    def username(self, event):
+        self.send(text_data=json.dumps({"message": self.user.username}))

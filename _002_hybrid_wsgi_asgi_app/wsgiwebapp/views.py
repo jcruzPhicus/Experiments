@@ -9,3 +9,7 @@ def index(request):
 
 def other_view(request):
     return render(request, "other_view.html")
+
+def auth(request):
+    return render(request, "auth.html")
+
