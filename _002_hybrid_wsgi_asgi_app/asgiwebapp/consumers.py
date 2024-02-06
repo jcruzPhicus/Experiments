@@ -2,7 +2,7 @@ import json
 import random
 import time
 
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 from django.contrib.auth.models import Permission
 import asyncio
 from asgiref.sync import sync_to_async, async_to_sync
@@ -44,4 +44,19 @@ class MessageConsumer(WebsocketConsumer):
         print("Called alert_message")
         time.sleep(2)
         self.send(text_data=json.dumps({"message": f"You sent {message}!"}))
-       
+
+
+class HeartbeatConsumer(AsyncWebsocketConsumer):
+
+    async def connect(self):
+        await self.accept() 
+        await asyncio.get_event_loop().create_task(self.send_heartbeat())
+            
+
+    async def disconnect(self, close_code):
+        await self.close()
+    
+    async def send_heartbeat(self):
+        await asyncio.sleep(5)
+        await self.send(text_data=json.dumps({"message": f"Heartbeat at {time.strftime('%m/%d/%Y, %H:%M:%S', time.localtime())}"}))
+        await asyncio.get_event_loop().create_task(self.send_heartbeat())
