@@ -10,6 +10,7 @@ channels = "*"
 uwsgi = "*"
 uvicorn = "*"
 gunicorn = "*"
+celery = {version = "*", extras = ["redis"]}
 
 [dev-packages]
 
