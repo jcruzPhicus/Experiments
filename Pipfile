@@ -10,7 +10,8 @@ channels = "*"
 uwsgi = "*"
 uvicorn = "*"
 gunicorn = "*"
-celery = {version = "*", extras = ["redis"]}
+celery = "*"
+django-celery-beat = "*"
 
 [dev-packages]
 
