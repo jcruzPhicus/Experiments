@@ -83,7 +83,9 @@
             const message = messageInputDom.value;
             const nameInputDom = document.querySelector('#nameinput');
             const username= nameInputDom.value;
-            socket.emit("send_message", {"data": message, "username": username})
+            const roomInputDom = document.querySelector("#roominput")
+            const roomName = roomInputDom.value;
+            socket.emit("send_message", {"data": message, "username": username, "room": roomName})
         }
 
     </script>

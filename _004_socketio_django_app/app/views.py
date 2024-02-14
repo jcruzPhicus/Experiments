@@ -20,8 +20,9 @@ def index(request):
 @sio.event
 def send_message(sid, message):
     print(f"Called send_message with {message}")
+
     sio.emit("message", {
-             "username": message["username"], 'data': message['data']}, room=sid)
+             "username": message["username"], 'data': message['data']}, room=message["room"])
 
 
 @sio.event
