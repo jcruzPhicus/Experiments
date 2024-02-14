@@ -2,90 +2,113 @@ import json
 import random
 import time
 
-from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
+from channels.generic.websocket import WebsocketConsumer, JsonWebsocketConsumer
 from django.contrib.auth.models import Permission
 import asyncio
 from asgiref.sync import sync_to_async, async_to_sync
+
 
 def get_user_permissions(user):
     if user.is_superuser:
         return list(Permission.objects.all())
     return list(user.user_permissions.all()) | list(Permission.objects.filter(group__user=user))
 
-class MessageConsumer(WebsocketConsumer):
-    group_name = "grupoTest"
-    user = None
 
+class BaseJsonConsumer(JsonWebsocketConsumer):
+
+    def __init__(self, group_name: str, valid_message_types, auth_required: bool = False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.group_name = group_name
+        self.valid_message_types = [
+            "subscribe", "unsubscribe", "help", *valid_message_types]
+        self.auth_required = auth_required
 
     def connect(self):
-        self.user = self.scope["user"]
-        if not self.user.is_authenticated:
-            self.accept() # realmente esto debería de hacerlo el frontend, si falla la conexion enseñar error, en vez de aceptar y cerrar
-            self.send(text_data=json.dumps({"message": f"You are not logged in, go to /login and try again."}))
-            self.close()
-        else: 
-            permissions = get_user_permissions(self.user)
-            self.accept()
-            self.group_name = self.user.username
-            self.send(text_data=json.dumps({"message": f"You are logged in as {self.user} with permissions {permissions}"}))
-            async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
-            
+        self.accept()
 
     def disconnect(self, close_code):
-        async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
+        self.close()
 
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
-        print(message)
-        async_to_sync(self.channel_layer.group_send)(self.group_name, {"type": "alert.message", "message": message})
-    
-    def alert_message(self, event):
-        message = event["message"]
+    def receive_json(self, content):
+        try:
+            print(content)
+            message_type: str = content["type"].lower()
+            data = content.get("data")
+            message_group_name = data.get(
+                "group_name") if data is not None else None
+            is_help_message: bool = (
+                message_type == "_help" or message_type == "help")
+            if message_type not in self.valid_message_types or is_help_message:
+                self.send_json({"content": "Wrong message_type"})
+            else:
+                print(f"Sending to {self.channel_name}, {message_type} {data}")
+                async_to_sync(self.channel_layer.send)(
+                    self.channel_name, {"type": f"{message_type}", "data": data})
+        except KeyError as e:  # Falta un parámetro obligatorio
+            self.send_json(content={
+                           "message": "You forgot to specify a required parameter.", "exception": str(e)})
+        except json.decoder.JSONDecodeError as e:  # No es JSON válido
+            self.send_json(
+                content={"message": "JSON data is invalid.", "exception": str(e)})
+
+
+class EchoConsumer(BaseJsonConsumer):
+    group_name = "echo"
+    valid_message_types = ["message"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(group_name=self.group_name,
+                         valid_message_types=self.valid_message_types, auth_required=False, *args, **kwargs)
+
+    def message(self, event):
+        data = event.get("data")
+        message = data.get("message") if data else None
         print("Called alert_message")
         time.sleep(2)
-        self.send(text_data=json.dumps({"message": f"You sent {message}!"}))
+        async_to_sync(self.channel_layer.group_send)(
+            self.group_name, {"type": "publish", "group_name": self.group_name, "content": message})
 
 
-class HeartbeatConsumer(AsyncWebsocketConsumer):
+class HeartbeatConsumer(WebsocketConsumer):
+    groups = ["heartbeat"]
 
-    async def connect(self):
-        await self.accept() 
-        await asyncio.get_event_loop().create_task(self.send_heartbeat())
-            
+    def publish(self, event):
+        pass
 
-    async def disconnect(self, close_code):
-        await self.close()
-    
-    async def send_heartbeat(self):
-        await asyncio.sleep(5)
-        await self.send(text_data=json.dumps({"message": f"Heartbeat at {time.strftime('%m/%d/%Y, %H:%M:%S', time.localtime())}"}))
-        await asyncio.get_event_loop().create_task(self.send_heartbeat())
+    def connect(self):
+        self.accept()
+
+    def disconnect(self, close_code):
+        self.close()
+
+    def message(self, event):
+        msg = event["message"]
+        self.send(text_data=json.dumps({"message": f"{msg}"}))
 
 
 class AuthConsumer(WebsocketConsumer):
     user = None
-    
+
     def connect(self):
         self.user = self.scope["user"]
         if not self.user.is_authenticated:
             self.close()
-        else: 
-            
+        else:
+
             self.accept()
             self.group_name = self.user.username
-            async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
-            
+            async_to_sync(self.channel_layer.group_add)(
+                self.group_name, self.channel_name)
 
     def disconnect(self, close_code):
-        async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
+        async_to_sync(self.channel_layer.group_discard)(
+            self.group_name, self.channel_name)
 
     def receive(self, text_data):
         msg = json.loads(text_data)
         msg_type = msg["type"]
-        async_to_sync(self.channel_layer.group_send)(self.group_name, {"type": msg_type})
-
-
+        async_to_sync(self.channel_layer.group_send)(
+            self.group_name, {"type": msg_type})
 
     def permission(self, event):
         permissions = get_user_permissions(self.user)
@@ -96,3 +119,53 @@ class AuthConsumer(WebsocketConsumer):
 
     def username(self, event):
         self.send(text_data=json.dumps({"message": self.user.username}))
+
+
+class SubscriptionConsumer(BaseJsonConsumer):
+    valid_message_types = ["subscribe",
+                           "unsubscribe", "publish", "query"]
+
+    group_name = "pubsub"
+    subscriptions = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(group_name=self.group_name,
+                         valid_message_types=self.valid_message_types, auth_required=False, *args, **kwargs)
+
+    def disconnect(self, close_code):
+        my_groups = self.subscriptions.setdefault(self.channel_name, [])
+        for group in my_groups:
+            async_to_sync(self.channel_layer.group_discard)(
+                group, self.channel_name)
+
+        self.subscriptions.pop(self.channel_name, [])
+        super().disconnect(close_code)
+
+    def subscribe(self, event):
+        data = event.get("data")
+        group_name = data.get("group_name") if data else None
+        my_groups = self.subscriptions.setdefault(self.channel_name, [])
+        if not my_groups or group_name not in my_groups:
+            async_to_sync(self.channel_layer.group_add)(
+                group_name, self.channel_name)
+            my_groups.append(group_name)
+
+    def unsubscribe(self, event):
+        data = event.get("data")
+        group_name = data.get("group_name") if data else None
+        my_groups = self.subscriptions.setdefault(self.channel_name, [])
+        if my_groups and group_name in group_name:
+            async_to_sync(self.channel_layer.group_discard)(
+                group_name, self.channel_name)
+            my_groups.remove(group_name)
+
+    def query(self, event):
+        my_groups = self.subscriptions.setdefault(self.channel_name, [])
+        self.send_json({"groups": my_groups})
+
+    def publish(self, event):
+        print(event)
+        print(self.channel_name)
+        content = event.get("content")
+        group_name = event.get("group_name")
+        self.send_json({"group_name": group_name, "content": content})

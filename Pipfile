@@ -12,6 +12,7 @@ uvicorn = "*"
 gunicorn = "*"
 celery = "*"
 django-celery-beat = "*"
+python-socketio = "*"
 
 [dev-packages]
 
