@@ -34,7 +34,7 @@
     <script>
         var socket = io.connect();
 
-        socket.on("join_response", (message) => {
+        socket.on("subscription_response", (message) => {
             console.log(message);
             const roomDom = document.querySelector("#roomname");
             roomDom.innerHTML = message["room"];
@@ -43,7 +43,7 @@
             usersDom.innerHTML += `<b id="${username}"> ${username} </b><br/>`
         });
 
-        socket.on("leave_response", (message) => {
+        socket.on("unsubscription_response", (message) => {
             console.log(message)
             const nameInputDom = document.querySelector('#nameinput');
             const ourName = nameInputDom.value;
@@ -69,14 +69,14 @@
             const name = nameInputDom.value;
             const roomInputDom = document.querySelector("#roominput")
             const roomName = roomInputDom.value;
-            socket.emit("join", {"room": roomName, "username": name})
+            socket.emit("subscribe", {"room": roomName, "username": name})
         }
         document.querySelector('#roomleave').onclick = function(e) {
             const nameInputDom = document.querySelector('#nameinput');
             const username= nameInputDom.value;
             const roomInputDom = document.querySelector("#roominput")
             const roomName = roomInputDom.value;
-            socket.emit("leave", {"room": roomName, "username": name})
+            socket.emit("unsubscribe", {"room": roomName, "username": name})
         }
         document.querySelector('#messagesubmit').onclick = function(e) {
             const messageInputDom = document.querySelector('#messageinput');

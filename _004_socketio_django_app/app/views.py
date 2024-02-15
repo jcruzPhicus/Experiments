@@ -13,31 +13,53 @@ else:
 # Create your views here.
 
 
+thread = None
+
+
 def index(request):
     return render(request, "index.html")
 
 
-@sio.event
-def send_message(sid, message):
-    print(f"Called send_message with {message}")
-
-    sio.emit("message", {
-             "username": message["username"], 'data': message['data']}, room=message["room"])
+def background_heartbeat():
+    while True:
+        sio.send("hii", room="heartbeat")
+        sio.sleep(5)
 
 
 @sio.event
-def join(sid, message):
+def query(sid):
+    sio.send(sio.rooms(sid), to=sid)
+
+
+@sio.event
+def subscribe(sid, message):
     print(f"Called join with message {message}")
     sio.enter_room(sid, message['room'])
-    sio.emit("join_response", {'room': message['room'], "username": message["username"]},
+    sio.emit("subscription_response", {'room': message['room'], "username": message["username"]},
              room=sid)
 
 
 @sio.event
-def leave(sid, message):
+def unsubscribe(sid, message):
     sio.leave_room(sid, message['room'])
-    sio.emit("leave_response", {'room': message['room'], "username": message["username"]},
+    sio.emit("unsubscription_response", {'room': message['room'], "username": message["username"]},
              room=sid)
+
+
+@sio.event
+def start_heartbeat(sid, message):
+    global thread
+    if thread is None:
+        thread = sio.start_background_task(background_heartbeat)
+
+
+@sio.event
+def stop_heartbeat(sid, message):
+    global thread
+    if thread is not None:
+        thread.cancel()
+        del thread
+        thread = None
 
 
 @sio.event
