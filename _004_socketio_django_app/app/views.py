@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.conf import settings
 import socketio
+import jwt
 
 # set async_mode to 'threading', 'eventlet', 'gevent' or 'gevent_uwsgi' to
 # force a mode else, the best mode is selected automatically from what's
@@ -27,8 +28,8 @@ def background_heartbeat():
 
 
 @sio.event
-def query(sid):
-    sio.send(sio.rooms(sid), to=sid)
+def query(sid, message):
+    sio.send(data=sio.rooms(sid), to=sid)
 
 
 @sio.event
@@ -63,8 +64,18 @@ def stop_heartbeat(sid, message):
 
 
 @sio.event
-def connect(sid, environ):
-    print("Client connected")
+def connect(sid, environ, auth=None):
+    print(environ)  # TODO: Fix the server doing a GET to itself and erroring out
+    token = auth.get("token") if isinstance(
+        auth, dict) else environ.get("HTTP_TOKEN")
+    try:
+        decoded_token = jwt.decode(
+            token, settings.SECRET_KEY, algorithms="HS256")
+        print(f"Client {decoded_token.name}")
+    except (jwt.exceptions.InvalidSignatureError,  # quizás hacer simplemente except Exception porque total, es solo una linea de codigo asi que las excepciones seran del jwt
+            jwt.exceptions.DecodeError,
+            jwt.exceptions.InvalidTokenError):
+        raise ConnectionRefusedError("No auth passed")
 
 
 @sio.event
