@@ -9,8 +9,10 @@ import jwt
 
 if settings.SERVER_TYPE == "ASGI":
     sio = socketio.AsyncServer(async_mode="asgi")
+    namespace_handler = socketio.AsyncNamespace
 else:
     sio = socketio.Server(async_mode=None)
+    namespace_handler = socketio.Namespace
 # Create your views here.
 
 
@@ -27,40 +29,37 @@ def background_heartbeat():
         sio.sleep(5)
 
 
-@sio.event
-def query(sid, message):
-    sio.send(data=sio.rooms(sid), to=sid)
+class SubscriptionNamespace(namespace_handler):
+    @sio.event
+    def on_query(sid, message):
+        sio.send(data=sio.rooms(sid), to=sid)
+
+    @sio.event
+    def on_subscribe(sid, message):
+        print(f"Called join with message {message}")
+        sio.enter_room(sid, message['room'])
+        sio.send(data={'room': message['room'],
+                 "username": message["username"]}, to=sid)
+
+    @sio.event
+    def on_unsubscribe(sid, message):
+        sio.leave_room(sid, message['room'])
+        sio.send({'room': message['room'], "username": message["username"]},
+                 to=sid)
 
 
-@sio.event
-def subscribe(sid, message):
-    print(f"Called join with message {message}")
-    sio.enter_room(sid, message['room'])
-    sio.emit("subscription_response", {'room': message['room'], "username": message["username"]},
-             room=sid)
+class HeartbeatNamespace(namespace_handler):
+    def on_start_heartbeat(sid, message):
+        global thread
+        if thread is None:
+            thread = sio.start_background_task(background_heartbeat)
 
-
-@sio.event
-def unsubscribe(sid, message):
-    sio.leave_room(sid, message['room'])
-    sio.emit("unsubscription_response", {'room': message['room'], "username": message["username"]},
-             room=sid)
-
-
-@sio.event
-def start_heartbeat(sid, message):
-    global thread
-    if thread is None:
-        thread = sio.start_background_task(background_heartbeat)
-
-
-@sio.event
-def stop_heartbeat(sid, message):
-    global thread
-    if thread is not None:
-        thread.cancel()
-        del thread
-        thread = None
+    def on_stop_heartbeat(sid, message):
+        global thread
+        if thread is not None:
+            thread.cancel()
+            del thread
+            thread = None
 
 
 @sio.event
@@ -81,3 +80,7 @@ def connect(sid, environ, auth=None):
 @sio.event
 def disconnect(sid):
     print('Client disconnected')
+
+
+sio.register_namespace(SubscriptionNamespace("/subscription"))
+sio.register_namespace(HeartbeatNamespace("/heartbeat"))
