@@ -71,7 +71,7 @@ def connect(sid, environ, auth=None):
     try:
         decoded_token = jwt.decode(
             token, settings.SECRET_KEY, algorithms="HS256")
-        print(f"Client {decoded_token.name}")
+        print(f"Client {decoded_token}")
     except (jwt.exceptions.InvalidSignatureError,  # quizás hacer simplemente except Exception porque total, es solo una linea de codigo asi que las excepciones seran del jwt
             jwt.exceptions.DecodeError,
             jwt.exceptions.InvalidTokenError):
