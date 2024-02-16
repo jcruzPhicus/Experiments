@@ -1,0 +1,43 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js" integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh" crossorigin="anonymous"></script>
+</head>
+<body>
+    <input id="roominput" type="text" size="100" placeholder="Sala a la que suscribirse"><br>
+    <input id="roomjoin" type="button" value="Join">
+    <input id="roomleave" type="button" value="Leave"><br><br>
+    <input id="heartbeatstart" type="button" value="Start Heartbeat">
+    <input id="heartbeatstop" type="button" value="Stop Heartbeat"><br>
+    
+    <script>
+        var socket = io("/");
+        var heartbeat = io("/heartbeat");
+        var subscription = io("/subscription");
+        heartbeat.on("message", (message) => {
+            alert(message)
+        });
+
+        document.querySelector('#roomjoin').onclick = function(e) {
+            const roomInputDom = document.querySelector("#roominput")
+            const roomName = roomInputDom.value;
+            subscription.emit("subscribe", {"room": roomName, "username": name})
+        }
+        document.querySelector('#roomleave').onclick = function(e) {
+            const roomInputDom = document.querySelector("#roominput")
+            const roomName = roomInputDom.value;
+            subscription.emit("unsubscribe", {"room": roomName, "username": name})
+        }
+        
+        document.querySelector('#heartbeatstart').onclick = function(e) {
+            heartbeat.emit("start_heartbeat")
+        }
+        document.querySelector('#heartbeatstop').onclick = function(e) {
+            heartbeat.emit("stop_heartbeat")
+        }
+    </script>
+</body>
+</html>

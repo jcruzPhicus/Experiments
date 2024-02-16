@@ -32,8 +32,9 @@
         </div>
     
     <script>
-        var socket = io.connect();
-
+        var socket = io();
+        var subscriptionSocket = io("/subscription")
+        var heartbeatSocket = io("/heartbeat")
         socket.on("subscription_response", (message) => {
             console.log(message);
             const roomDom = document.querySelector("#roomname");

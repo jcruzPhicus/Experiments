@@ -22,6 +22,7 @@ from rest_framework_simplejwt.views import (
 from django.contrib import admin
 from django.urls import path, include
 import app.urls
+import app.sockets
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include(app.urls)),
